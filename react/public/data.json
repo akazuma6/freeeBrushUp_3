@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "username": "101",
+    "first_name": "山田",
+    "last_name": "太郎"
+  },
+  {
+    "id": 2,
+    "username": "102",
+    "first_name": "鈴木",
+    "last_name": "花子"
+  },
+  {
+    "id": 3,
+    "username": "103",
+    "first_name": "佐藤",
+    "last_name": "次郎"
+  },
+  {
+    "id": 4,
+    "username": "201",
+    "first_name": "田中",
+    "last_name": "三郎"
+  }
+]
