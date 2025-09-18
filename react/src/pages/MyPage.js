@@ -19,6 +19,7 @@ export default function MyPage() {
   const [activeRole, setActiveRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentTime, setCurrentTime] = useState(new Date());
 //Callbackフック、パフォーマンスを最適化するためのもの。依存している値が変わらない限り再作成しない
   const getAuthHeaders = useCallback(() => ({
     headers: { 'Authorization': `Bearer ${authToken.access}` }
@@ -82,33 +83,52 @@ export default function MyPage() {
       .finally(() => setLoading(false));
   }, [userId, authToken, getAuthHeaders, fetchLatestAttendance, fetchAttendanceHistory]);
 
-  const handleClockIn = () => axios.post(`${API_BASE_URL}/employees/attendances/`, { employee: employee.id }, getAuthHeaders()).then(refreshAttendanceData).catch(err => alert("出勤処理に失敗しました。"));
-  const handleClockOut = () => axios.patch(`${API_BASE_URL}/employees/attendances/${attendance.id}/`, { check_out: new Date().toISOString() }, getAuthHeaders()).then(refreshAttendanceData).catch(err => alert("退勤処理に失敗しました。"));
-  const handleStartBreak = () => axios.post(`${API_BASE_URL}/employees/breaks/`, { attendance: attendance.id, break_start: new Date().toISOString() }, getAuthHeaders()).then(refreshAttendanceData).catch(err => alert("休憩開始処理に失敗しました。"));
-  const handleEndBreak = () => axios.patch(`${API_BASE_URL}/employees/breaks/${activeBreak.id}/`, { break_end: new Date().toISOString() }, getAuthHeaders()).then(refreshAttendanceData).catch(err => alert("休憩終了処理に失敗しました。"));
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const makeApiRequest = useCallback(async (method, url, options = {}) => {
+    const { data = null, refresh = true, successMessage = null, errorMessage } = options;
+    try {
+      const config = getAuthHeaders();
+      let response;
+      switch (method.toLowerCase()) {
+        case 'post':
+          response = await axios.post(url, data, config);
+          break;
+        case 'patch':
+          response = await axios.patch(url, data, config);
+          break;
+        default:
+          throw new Error(`Unsupported method: ${method}`);
+      }
+      if (successMessage) alert(successMessage);
+      if (refresh) refreshAttendanceData();
+      return response;
+    } catch (err) {
+      console.error(errorMessage, err.response || err);
+      alert(errorMessage);
+      throw err;
+    }
+  }, [getAuthHeaders, refreshAttendanceData]);
+
+  const handleClockIn = () => makeApiRequest('post', `${API_BASE_URL}/employees/attendances/`, { data: { employee: employee.id }, errorMessage: "出勤処理に失敗しました。" });
+  const handleClockOut = () => makeApiRequest('patch', `${API_BASE_URL}/employees/attendances/${attendance.id}/`, { data: { check_out: new Date().toISOString() }, errorMessage: "退勤処理に失敗しました。" });
+  const handleStartBreak = () => makeApiRequest('post', `${API_BASE_URL}/employees/breaks/`, { data: { attendance: attendance.id, break_start: new Date().toISOString() }, errorMessage: "休憩開始処理に失敗しました。" });
+  const handleEndBreak = () => makeApiRequest('patch', `${API_BASE_URL}/employees/breaks/${activeBreak.id}/`, { data: { break_end: new Date().toISOString() }, errorMessage: "休憩終了処理に失敗しました。" });
   
   const handleSummaryChange = (attendanceId, summary) => {
-    axios.patch(`${API_BASE_URL}/employees/attendances/${attendanceId}/`, { summary }, getAuthHeaders())
-      .catch(err => alert("摘要の更新に失敗しました。"));
+    makeApiRequest('patch', `${API_BASE_URL}/employees/attendances/${attendanceId}/`, { data: { summary }, refresh: false, errorMessage: "摘要の更新に失敗しました。" });
   };
 
   const handleStartRole = (role) => {
     const payload = { attendance: attendance.id, role: role, start_time: new Date().toISOString() };
-    axios.post(`${API_BASE_URL}/employees/roleactivities/`, payload, getAuthHeaders())
-      .then(refreshAttendanceData)
-      .catch(err => {
-        console.error("役割の開始処理でエラー:", err.response || err);
-        alert("役割の開始処理に失敗しました。");
-      });
+    makeApiRequest('post', `${API_BASE_URL}/employees/roleactivities/`, { data: payload, errorMessage: "役割の開始処理に失敗しました。" });
   };
 
   const handleEndRole = () => {
-    axios.patch(`${API_BASE_URL}/employees/roleactivities/${activeRole.id}/`, { end_time: new Date().toISOString() }, getAuthHeaders())
-      .then(refreshAttendanceData)
-      .catch(err => {
-        console.error("役割の終了処理でエラー:", err.response || err);
-        alert("役割の終了処理に失敗しました。");
-      });
+    makeApiRequest('patch', `${API_BASE_URL}/employees/roleactivities/${activeRole.id}/`, { data: { end_time: new Date().toISOString() }, errorMessage: "役割の終了処理に失敗しました。" });
   };
 
   // 【修正点】時刻がない場合にN/Aではなく空白を返すように変更
@@ -135,6 +155,9 @@ export default function MyPage() {
           <Typography sx={{ mt: 1, color: 'text.secondary' }}>従業員番号: {employee.employee_number}</Typography>
           
           <Box sx={{ mt: 4, p: 2, border: '1px solid #ddd', borderRadius: '4px' }}>
+            <Typography variant="h5" align="center" gutterBottom>
+              {currentTime.toLocaleTimeString('ja-JP')}
+            </Typography>
              <Typography variant="h6" align="center" gutterBottom>
                現在のステータス: {isOnBreak ? '休憩中' : hasActiveRole ? `${activeRole.role === 'kitchen' ? 'キッチン' : 'ホール'}で作業中` : isClockedIn ? '出勤中 (待機)' : '退勤'}
              </Typography>

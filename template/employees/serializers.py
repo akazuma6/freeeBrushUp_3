@@ -39,27 +39,29 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
+    active_check_in = serializers.SerializerMethodField()
     hp = serializers.SerializerMethodField()
     current_role = serializers.SerializerMethodField()
-    active_check_in = serializers.SerializerMethodField()
 
     class Meta:
         model = EmployeeProfile
-        fields = ['id', 'user', 'employee_number', 'hp', 'current_role', 'active_check_in']
+        fields = ['id', 'user', 'employee_number', 'active_check_in', 'hp', 'current_role']
 
     def get_active_check_in(self, obj):
         active_attendance = Attendance.objects.filter(employee=obj, check_out__isnull=True).order_by('-check_in').first()
+        # Cache the result on the object instance for other methods to use
+        obj._active_attendance = active_attendance
         if active_attendance:
             return active_attendance.check_in
         return None
 
     def get_hp(self, obj):
-        now = timezone.now()
-        active_attendance = Attendance.objects.filter(employee=obj, check_out__isnull=True).order_by('-check_in').first()
-
+        # Use the cached active_attendance if it exists
+        active_attendance = getattr(obj, '_active_attendance', None)
         if not active_attendance:
             return None
 
+        now = timezone.now()
         hp = 10.0
 
         total_break_seconds = sum([
@@ -78,8 +80,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         return round(hp, 2)
 
     def get_current_role(self, obj):
-        active_attendance = Attendance.objects.filter(employee=obj, check_out__isnull=True).order_by('-check_in').first()
-
+        # Use the cached active_attendance if it exists
+        active_attendance = getattr(obj, '_active_attendance', None)
         if active_attendance:
             active_role = RoleActivity.objects.filter(attendance=active_attendance, end_time__isnull=True).first()
             if active_role:

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import {
-    Box, Button, Paper, Typography, Table, TableBody, TableCell, 
-    TableContainer, TableHead, TableRow, IconButton, Dialog, DialogActions, 
-    DialogContent, DialogTitle, TextField, DialogContentText, Select, MenuItem
+    Box, Button, Paper, Typography, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, IconButton, Dialog, DialogActions,
+    DialogContent, DialogTitle, TextField, Select, MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { API_BASE_URL } from '../config';
 
 const EmployeeDialog = ({ open, onClose, onSave, profile }) => {
     const [formData, setFormData] = useState({});
@@ -66,69 +68,47 @@ export default function EmployeeManager() {
     const [currentProfile, setCurrentProfile] = useState(null);
     const [profileToDelete, setProfileToDelete] = useState(null);
 
-    const fetchProfiles = async () => {
+    const fetchProfiles = useCallback(async () => {
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/employees/employeeprofiles/');
-            const data = await response.json();
-            setProfiles(data);
+            const response = await axios.get(`${API_BASE_URL}/employees/employeeprofiles/`);
+            setProfiles(response.data);
         } catch (error) {
             console.error("Failed to fetch profiles:", error);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchProfiles();
-    }, []);
+    }, [fetchProfiles]);
+
+    const apiRequest = async (method, url, data = null) => {
+        try {
+            await axios({ method, url, data });
+            fetchProfiles();
+        } catch (error) {
+            console.error(`Failed to ${method} profile:`, error.response || error);
+            alert(`プロファイルの${method}処理に失敗しました。`);
+        }
+    };
 
     const handleSave = async (data) => {
-        const url = currentProfile 
-            ? `http://127.0.0.1:8000/api/employees/employeeprofiles/${currentProfile.id}/`
-            : 'http://127.0.0.1:8000/api/employees/employeeprofiles/';
-        const method = currentProfile ? 'PUT' : 'POST';
-
-        try {
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (response.ok) {
-                fetchProfiles();
-            } else {
-                const errorData = await response.json();
-                console.error("Failed to save profile:", errorData);
-            }
-        } catch (error) {
-            console.error("Failed to save profile:", error);
-        }
+        const url = currentProfile
+            ? `${API_BASE_URL}/employees/employeeprofiles/${currentProfile.id}/`
+            : `${API_BASE_URL}/employees/employeeprofiles/`;
+        const method = currentProfile ? 'put' : 'post';
+        await apiRequest(method, url, data);
         setDialogOpen(false);
         setCurrentProfile(null);
     };
 
     const handleDelete = async () => {
-        try {
-            await fetch(`http://127.0.0.1:8000/api/employees/employeeprofiles/${profileToDelete.id}/`, {
-                method: 'DELETE'
-            });
-            fetchProfiles();
-        } catch (error) {
-            console.error("Failed to delete profile:", error);
-        }
+        await apiRequest('delete', `${API_BASE_URL}/employees/employeeprofiles/${profileToDelete.id}/`);
         setConfirmOpen(false);
         setProfileToDelete(null);
     };
 
-    const handleRoleChange = async (profileId, newRole) => {
-        try {
-            await fetch(`http://127.0.0.1:8000/api/employees/employeeprofiles/${profileId}/change_role/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role: newRole })
-            });
-            fetchProfiles(); // Refresh data to show the new role
-        } catch (error) {
-            console.error("Failed to change role:", error);
-        }
+    const handleRoleChange = (profileId, newRole) => {
+        apiRequest('post', `${API_BASE_URL}/employees/employeeprofiles/${profileId}/change_role/`, { role: newRole });
     };
 
     return (
@@ -178,11 +158,7 @@ export default function EmployeeManager() {
             <EmployeeDialog open={isDialogOpen} onClose={() => setDialogOpen(false)} onSave={handleSave} profile={currentProfile} />
             <Dialog open={isConfirmOpen} onClose={() => setConfirmOpen(false)}>
                 <DialogTitle>削除の確認</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        本当に従業員番号「{profileToDelete?.employee_number}」を削除しますか？この操作は元に戻せません。
-                    </DialogContentText>
-                </DialogContent>
+
                 <DialogActions>
                     <Button onClick={() => setConfirmOpen(false)}>キャンセル</Button>
                     <Button onClick={handleDelete} color="error">削除</Button>

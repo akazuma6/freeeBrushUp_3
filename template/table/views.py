@@ -17,24 +17,6 @@ class TableViewSet(viewsets.ModelViewSet):
                 Table.objects.create(id=i, status='available')
         return super().get_queryset()
 
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        new_status = request.data.get('status')
-
-        # ステータスが 'occupied' に変更された場合
-        if new_status == 'occupied' and instance.status != 'occupied':
-            instance.entryTime = timezone.now()
-            instance.exitTime = instance.entryTime + timedelta(hours=2)
-        
-        # ステータスが 'available' に変更された場合
-        elif new_status == 'available' and instance.status != 'available':
-            instance.people = None
-            instance.entryTime = None
-            instance.exitTime = None
-            instance.memo = ''
-
-        return super().update(request, *args, **kwargs)
-
     @action(detail=True, methods=['post'])
     def extend_time(self, request, pk=None):
         table = self.get_object()
@@ -44,3 +26,4 @@ class TableViewSet(viewsets.ModelViewSet):
             return Response(self.get_serializer(table).data)
         else:
             return Response({'error': 'No exit time to extend'}, status=status.HTTP_400_BAD_REQUEST)
+

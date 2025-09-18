@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// MUI Materialから必要なコンポーネントをインポートします
+import axios from 'axios';
 import {
   Box,
   Paper,
@@ -12,66 +12,67 @@ import {
   FormControl,
   TextField
 } from '@mui/material';
-// 【修正点】タイムピッカー関連のインポートをこちらに移動します
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { StaticTimePicker } from '@mui/x-date-pickers/StaticTimePicker';
-import dayjs from 'dayjs'; // dayjsをインポート
+import dayjs from 'dayjs';
+import { API_BASE_URL } from '../config';
 
 export default function TableSet() {
   const { tableId } = useParams();
   const navigate = useNavigate();
 
-  // 各フォームの状態を管理
   const [status, setStatus] = useState('available');
   const [people, setPeople] = useState('');
   const [entryTime, setEntryTime] = useState(dayjs());
   const [memo, setMemo] = useState('');
+  const [extensionMinutes, setExtensionMinutes] = useState(0);
 
-  const fetchTableData = async () => {
+  const fetchTableData = useCallback(async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/tables/${tableId}/`);
-      const data = await response.json();
+      const response = await axios.get(`${API_BASE_URL}/tables/${tableId}/`);
+      const data = response.data;
       setStatus(data.status || 'available');
       setPeople(data.people || '');
       setEntryTime(data.entryTime ? dayjs(data.entryTime) : dayjs());
       setMemo(data.memo || '');
+      setExtensionMinutes(data.extension_minutes || 0);
     } catch (error) {
       console.error("Failed to fetch table data:", error);
     }
-  };
+  }, [tableId]);
 
   useEffect(() => {
     fetchTableData();
-  }, [tableId]);
+  }, [fetchTableData]);
 
-  const handleUpdate = async () => {
+  const makeApiRequest = async (payload, options = {}) => {
+    const { navigateHome = false, alertMessage = null } = options;
+    try {
+      await axios.patch(`${API_BASE_URL}/tables/${tableId}/`, payload);
+      if (alertMessage) alert(alertMessage);
+      if (navigateHome) {
+        navigate('/');
+      } else {
+        fetchTableData(); // Refresh data if not navigating away
+      }
+    } catch (error) {
+      console.error("API request failed:", error);
+      alert("操作に失敗しました。");
+    }
+  };
+
+  const handleUpdate = () => {
     const payload = {
       status,
       people: people === '' ? null : Number(people),
       entryTime: entryTime.toISOString(),
       memo,
     };
-
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/tables/${tableId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        navigate('/'); // 更新成功後、座席表に戻る
-      } else {
-        console.error("Failed to update table");
-      }
-    } catch (error) {
-      console.error("Error updating table:", error);
-    }
+    makeApiRequest(payload, { navigateHome: true });
   };
 
-  const handleExit = async () => {
+  const handleExit = () => {
     const payload = {
       status: 'available',
       people: null,
@@ -80,55 +81,18 @@ export default function TableSet() {
       memo: '',
       extension_minutes: 0,
     };
-
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/tables/${tableId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        navigate('/'); // 更新成功後、座席表に戻る
-      } else {
-        console.error("Failed to process exit");
-      }
-    } catch (error) {
-      console.error("Error processing exit:", error);
-    }
+    makeApiRequest(payload, { navigateHome: true });
   };
 
-  const handleExtend = async () => {
-    // まず現在のテーブルデータを取得して最新の延長時間を知る
-    try {
-      const currentDataRes = await fetch(`http://127.0.0.1:8000/api/tables/${tableId}/`);
-      const currentData = await currentDataRes.json();
-      const newExtensionTime = (currentData.extension_minutes || 0) + 30;
-
-      const response = await fetch(`http://127.0.0.1:8000/api/tables/${tableId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ extension_minutes: newExtensionTime }),
-      });
-
-      if (response.ok) {
-        fetchTableData();
-        alert('30分延長しました。');
-      } else {
-        console.error("Failed to extend time");
-      }
-    } catch (error) {
-      console.error("Error extending time:", error);
-    }
+  const handleExtend = () => {
+    const newExtensionTime = extensionMinutes + 30;
+    makeApiRequest({ extension_minutes: newExtensionTime }, { alertMessage: '30分延長しました。' });
   };
 
   return (
     <Paper sx={{ p: 4, maxWidth: 600, margin: 'auto' }} elevation={3}>
       <Typography variant="h4" gutterBottom>
-        テーブル {tableId} の管理
+        {tableId}卓の管理
       </Typography>
 
       {/* テーブル状況の選択 */}
@@ -181,7 +145,7 @@ export default function TableSet() {
         />
       </Box>
 
-      {/* 操作ボタン */}
+
       <Box sx={{ mt: 4, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
         <MuiButton
           variant="outlined"
@@ -189,7 +153,7 @@ export default function TableSet() {
           onClick={handleExit}
           disabled={status !== 'occupied'}
         >
-          退席（リセット）
+          退席
         </MuiButton>
         <MuiButton
           variant="contained"
@@ -203,7 +167,7 @@ export default function TableSet() {
           variant="contained"
           onClick={handleUpdate}
         >
-          登録・更新
+          登録
         </MuiButton>
         <MuiButton
           variant="outlined"

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Tab, Tabs, Typography } from '@mui/material';
 import EmployeeManager from '../components/EmployeeManager';
-import StickyNoteHistory from '../components/StickyNoteHistory';
+
 
 
 function TabPanel(props) {
@@ -37,15 +37,12 @@ export default function AdminPage() {
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={value} onChange={handleChange} aria-label="admin tabs">
           <Tab label="従業員管理" id="admin-tab-0" />
-          <Tab label="付箋の履歴" id="admin-tab-1" />
         </Tabs>
       </Box>
       <TabPanel value={value} index={0}>
         <EmployeeManager />
       </TabPanel>
-      <TabPanel value={value} index={1}>
-        <StickyNoteHistory />
-      </TabPanel>
+      
     </Box>
   );
 }

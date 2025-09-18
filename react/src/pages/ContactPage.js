@@ -4,26 +4,12 @@ import { TextField, Button, Paper, Typography, Box } from '@mui/material';
 
 export const ContactPage = () => {
   const form = useRef();
-
-  // --------------------------------------------------------------------------
-  // TODO: お客様へ
-  // 以下の3つの値は、EmailJSの管理画面から取得したご自身のものに置き換えてください。
-  // 1. EmailJSにサインアップ: https://www.emailjs.com/
-  // 2. 新しいサービスを追加 (例: Gmail)
-  // 3. 新しいメールテンプレートを作成
-  // 4. 「Account」->「API Keys」でPublic Key (User ID) を確認
-  // --------------------------------------------------------------------------
-  const YOUR_SERVICE_ID = 'service_awnkwwq';       // EmailJSのサービスID
-  const YOUR_TEMPLATE_ID = 'template_bm8orgm';     // EmailJSのテンプレートID
-  const YOUR_PUBLIC_KEY = 'HdJ-TyVVwBQwEISU9';       // EmailJSのPublic Key (User ID)
+  const YOUR_SERVICE_ID = 'service_awnkwwq';  
+  const YOUR_TEMPLATE_ID = 'template_bm8orgm'; 
+  const YOUR_PUBLIC_KEY = 'HdJ-TyVVwBQwEISU9';       
 
   const sendEmail = (e) => {
     e.preventDefault();
-
-    if (YOUR_SERVICE_ID === 'YOUR_SERVICE_ID') {
-      alert('EmailJSのIDが設定されていません。ContactPage.jsファイルを編集してください。');
-      return;
-    }
 
     emailjs.sendForm(YOUR_SERVICE_ID, YOUR_TEMPLATE_ID, form.current, YOUR_PUBLIC_KEY)
       .then((result) => {

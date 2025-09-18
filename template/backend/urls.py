@@ -18,6 +18,6 @@ urlpatterns = [
     
     # employeesアプリは /api/employees/ 以下に配置
     path('api/employees/', include('employees.urls')),
-    path('api/tables/', include('table.urls')),
-    path('api/notes/', include('note.urls')),
+    path('api/', include('table.urls')),
+    path('api/', include('note.urls')),
 ]

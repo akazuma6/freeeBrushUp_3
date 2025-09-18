@@ -4,18 +4,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { API_BASE_URL } from '../config';
 
-// 修正点: createContextにデフォルト値を設定します。
-// これにより、Providerの外部でContextが呼び出された際のクラッシュを防ぎ、
-// どの値が欠けているかを明確にします。
-//nullはデフォルトの値
-//作っているエラーをそうやって解消したか？？
-//どうしてその課題を洗い出して、その機能でどうして解決できるとおもったのか
-//大変だったのはどこ？どうして大変だったか？どうやって解決したか？
-//この機能なんで必要と思ったの？
-//まだ時間があるんだったらどんな機能を付けたい？
-//インターンで学んだこと
-//なにつくったことあるか
-//5~7分でプロダクトの説明
+
 // https://zenn.dev/idapan/articles/0a2053e54b41e0
 const AuthContext = createContext({
     user: null,
@@ -92,8 +81,8 @@ export const AuthProvider = ({ children }) => {
         logoutUser,
     };
     
-    // アプリの初回読み込み時やトークンが変更された時にユーザー情報を更新し、
-    // ローディング状態を管理します。
+    // アプリの初回読み込み時やトークンが変更された時にユーザー情報を更新
+    // ローディング状態を管理
     useEffect(() => {
         if (authToken) {
             setUser(jwtDecode(authToken.access));
@@ -106,7 +95,7 @@ export const AuthProvider = ({ children }) => {
 
     return (
 //loadingの仕組みがないと、アプリを開いた瞬間に、
-//一瞬だけ「ログアウト状態」の画面が表示された後、すぐに「ログイン状態」の画面に切り替わる、というチラつき（Flicker）が発生する可能性があります。        
+//一瞬だけ「ログアウト状態」の画面が表示された後、すぐに「ログイン状態」の画面に切り替わる、というチラつき（Flicker）が発生する可能性があります。by gemini        
         <AuthContext.Provider value={contextData}>
             {children}
         </AuthContext.Provider>

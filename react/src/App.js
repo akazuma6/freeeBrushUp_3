@@ -12,6 +12,9 @@ import TableSet from './pages/TableSet';
 import AdminPage from './pages/AdminPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import { ContactPage } from './pages/ContactPage';
+import ReservationPage from './pages/ReservationPage';
+import StickyNoteHistoryPage from './pages/StickyNoteHistoryPage';
+
 
 function App() {
   return (
@@ -36,6 +39,9 @@ function App() {
                 }
               />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/reservations" element={<ReservationPage />} />
+              <Route path="/history" element={<StickyNoteHistoryPage />} />
+              
             </Routes>
         </Container>
       </AuthProvider>
